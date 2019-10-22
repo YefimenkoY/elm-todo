@@ -2,8 +2,8 @@ module Main exposing (main)
 
 import Browser
 import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (..)
+import Html.Attributes exposing (checked, style, type_, value)
+import Html.Events exposing (onClick, onInput, onSubmit)
 
 
 main =
@@ -20,15 +20,17 @@ type alias ToDo =
 
 type alias Model =
     { todos : List ToDo
+    , input : String
+    , id : Int
     }
 
 
 init : Model
 init =
     { todos =
-        [ { text = "Test_1", done = False, id = 1 }
-        , { text = "Test_2", done = True, id = 2 }
-        ]
+        []
+    , input = ""
+    , id = 0
     }
 
 
@@ -37,8 +39,10 @@ init =
 
 
 type Val
-    = AddToDo ToDo
+    = AddToDo
     | SetDone Int
+    | SetInput String
+    | RemoveTodo Int
 
 
 
@@ -48,22 +52,39 @@ type Val
 update : Val -> Model -> Model
 update val model =
     case val of
-        AddToDo t ->
-            { model | todos = List.append model.todos [ t ] }
+        AddToDo ->
+            let
+                newTodo =
+                    { id = model.id, text = model.input, done = False }
+
+                newModel =
+                    { model | todos = List.append model.todos [ newTodo ], input = "", id = model.id + 1 }
+            in
+            newModel
 
         SetDone todoId ->
             { model
                 | todos =
                     List.map
                         (\t ->
-                            if t.id == todoId then
-                                { t | done = not t.done }
+                            let
+                                isDone =
+                                    if t.id == todoId then
+                                        not t.done
 
-                            else
-                                t
+                                    else
+                                        t.done
+                            in
+                            { t | done = isDone }
                         )
                         model.todos
             }
+
+        SetInput v ->
+            { model | input = v }
+
+        RemoveTodo t ->
+            { model | todos = List.filter (\i -> i.id /= t) model.todos }
 
 
 
@@ -87,6 +108,7 @@ todo t =
             ]
             [ text t.text ]
         , input [ type_ "checkbox", checked t.done, onClick (SetDone t.id) ] []
+        , button [ onClick (RemoveTodo t.id) ] [ text "X" ]
         ]
 
 
@@ -97,5 +119,11 @@ display list =
 
 view : Model -> Html Val
 view model =
-    ul []
-        (display (List.map todo model.todos))
+    div []
+        [ form [ onSubmit AddToDo ]
+            [ input [ type_ "text", onInput SetInput, value model.input ] []
+            , button [ type_ "submit" ] [ text "add" ]
+            ]
+        , ul []
+            (display (List.map todo model.todos))
+        ]
